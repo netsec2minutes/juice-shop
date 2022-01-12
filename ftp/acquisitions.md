@@ -1,6 +1,6 @@
 # Planned Acquisitions
 
-> This document is confidential! Do not distribute!
+Documento confidencial ! Do not distribute!
 
 Our company plans to acquire several competitors within the next year.
 This will have a significant stock market impact as we will elaborate in
