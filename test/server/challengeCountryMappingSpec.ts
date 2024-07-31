@@ -1,18 +1,18 @@
 /*
- * Copyright (c) 2014-2022 Bjoern Kimminich & the OWASP Juice Shop contributors.
+ * Copyright (c) 2014-2024 Bjoern Kimminich & the OWASP Juice Shop contributors.
  * SPDX-License-Identifier: MIT
  */
 
 import chai = require('chai')
-const sinonChai = require('sinon-chai')
+import path from 'path'
+import { promisify } from 'util'
+import sinonChai = require('sinon-chai')
 const expect = chai.expect
 chai.use(sinonChai)
 
 const fs = require('fs')
 const { safeLoad } = require('js-yaml')
-const { promisify } = require('util')
 const readFile = promisify(fs.readFile)
-const path = require('path')
 
 const loadYamlFile = async (filename: string) => {
   const contents = await readFile(filename, { encoding: 'utf8' })
@@ -21,18 +21,18 @@ const loadYamlFile = async (filename: string) => {
 
 describe('challengeCountryMapping', () => {
   let challenges: any
-  let countryMapping: { [key: string]: { code: any } }
+  let countryMapping: Record<string, { code: any }>
   before(async () => {
     challenges = await loadYamlFile(path.resolve('data/static/challenges.yml'))
     countryMapping = (await loadYamlFile(path.resolve('config/fbctf.yml'))).ctf.countryMapping
   })
-  xit('should have a country mapping for every challenge', async () => {
+  it('should have a country mapping for every challenge', async () => {
     for (const { key } of challenges) {
       expect(countryMapping, `Challenge "${key}" does not have a country mapping.`).to.have.property(key)
     }
   })
 
-  xit('should have unique country codes in every mapping', async () => {
+  it('should have unique country codes in every mapping', async () => {
     const countryCodeCounts: any = {}
 
     for (const key of Object.keys(countryMapping)) {

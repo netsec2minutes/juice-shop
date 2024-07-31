@@ -1,13 +1,14 @@
 /*
- * Copyright (c) 2014-2022 Bjoern Kimminich & the OWASP Juice Shop contributors.
+ * Copyright (c) 2014-2024 Bjoern Kimminich & the OWASP Juice Shop contributors.
  * SPDX-License-Identifier: MIT
  */
 
-import models = require('../models/index')
-import { Request, Response, NextFunction } from 'express'
+import { type Request, type Response, type NextFunction } from 'express'
+import { type Captcha } from '../data/types'
+import { CaptchaModel } from '../models/captcha'
 
 function captchas () {
-  return (req: Request, res: Response) => {
+  return async (req: Request, res: Response) => {
     const captchaId = req.app.locals.captchaId++
     const operators = ['*', '+', '-']
 
@@ -22,25 +23,24 @@ function captchas () {
     const answer = eval(expression).toString() // eslint-disable-line no-eval
 
     const captcha = {
-      captchaId: captchaId,
+      captchaId,
       captcha: expression,
-      answer: answer
+      answer
     }
-    const captchaInstance = models.Captcha.build(captcha)
-    captchaInstance.save().then(() => {
-      res.json(captcha)
-    })
+    const captchaInstance = CaptchaModel.build(captcha)
+    await captchaInstance.save()
+    res.json(captcha)
   }
 }
 
 captchas.verifyCaptcha = () => (req: Request, res: Response, next: NextFunction) => {
-  models.Captcha.findOne({ where: { captchaId: req.body.captchaId } }).then(captcha => {
-    if (captcha && req.body.captcha === captcha.dataValues.answer) {
+  CaptchaModel.findOne({ where: { captchaId: req.body.captchaId } }).then((captcha: Captcha | null) => {
+    if ((captcha != null) && req.body.captcha === captcha.answer) {
       next()
     } else {
       res.status(401).send(res.__('Wrong answer to CAPTCHA. Please try again.'))
     }
-  }).catch(error => {
+  }).catch((error: Error) => {
     next(error)
   })
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2022 Bjoern Kimminich & the OWASP Juice Shop contributors.
+ * Copyright (c) 2014-2024 Bjoern Kimminich & the OWASP Juice Shop contributors.
  * SPDX-License-Identifier: MIT
  */
 
@@ -88,6 +88,7 @@ function loadHint (hint: ChallengeHint): HTMLElement {
   elem.style.fontFamily = 'Roboto,Helvetica Neue,sans-serif'
   if (!hint.unskippable) {
     elem.style.cursor = 'pointer'
+    elem.title = 'Double-click to skip'
   }
   elem.style.fontSize = '14px'
   elem.style.display = 'flex'
@@ -140,9 +141,9 @@ function loadHint (hint: ChallengeHint): HTMLElement {
   return wrapper
 }
 
-async function waitForClick (element: HTMLElement) {
+async function waitForDoubleClick (element: HTMLElement) {
   return await new Promise((resolve) => {
-    element.addEventListener('click', resolve)
+    element.addEventListener('dblclick', resolve)
   })
 }
 
@@ -154,12 +155,12 @@ async function waitForCancel (element: HTMLElement) {
   })
 }
 
-export function hasInstructions (challengeName: String): boolean {
+export function hasInstructions (challengeName: string): boolean {
   return challengeInstructions.find(({ name }) => name === challengeName) !== undefined
 }
 
-export async function startHackingInstructorFor (challengeName: String): Promise<void> {
-  const challengeInstruction = challengeInstructions.find(({ name }) => name === challengeName) || TutorialUnavailableInstruction
+export async function startHackingInstructorFor (challengeName: string): Promise<void> {
+  const challengeInstruction = challengeInstructions.find(({ name }) => name === challengeName) ?? TutorialUnavailableInstruction
 
   for (const hint of challengeInstruction.hints) {
     const element = loadHint(hint)
@@ -169,12 +170,13 @@ export async function startHackingInstructorFor (challengeName: String): Promise
     }
     element.scrollIntoView()
 
-    const continueConditions: Array<Promise<void | {}>> = [
+    // eslint-disable-next-line @typescript-eslint/no-invalid-void-type
+    const continueConditions: Array<Promise<void | unknown>> = [
       hint.resolved()
     ]
 
     if (!hint.unskippable) {
-      continueConditions.push(waitForClick(element))
+      continueConditions.push(waitForDoubleClick(element))
     }
     continueConditions.push(waitForCancel(document.getElementById('cancelButton')))
 

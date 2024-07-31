@@ -1,20 +1,22 @@
 /*
- * Copyright (c) 2014-2022 Bjoern Kimminich & the OWASP Juice Shop contributors.
+ * Copyright (c) 2014-2024 Bjoern Kimminich & the OWASP Juice Shop contributors.
  * SPDX-License-Identifier: MIT
  */
 
-import models = require('../models/index')
-import { Request, Response } from 'express'
+import { type Request, type Response } from 'express'
+import { RecycleModel } from '../models/recycle'
 
-const utils = require('../lib/utils')
+import * as utils from '../lib/utils'
 
 exports.getRecycleItem = () => (req: Request, res: Response) => {
-  models.Recycle.findAll({
+  RecycleModel.findAll({
     where: {
       id: JSON.parse(req.params.id)
     }
   }).then((Recycle) => {
     return res.send(utils.queryResultToJson(Recycle))
+  }).catch((_: unknown) => {
+    return res.send('Error fetching recycled items. Please try again')
   })
 }
 

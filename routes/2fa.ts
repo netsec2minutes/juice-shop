@@ -1,16 +1,18 @@
 /*
- * Copyright (c) 2014-2022 Bjoern Kimminich & the OWASP Juice Shop contributors.
+ * Copyright (c) 2014-2024 Bjoern Kimminich & the OWASP Juice Shop contributors.
  * SPDX-License-Identifier: MIT
  */
 
-import config = require('config')
-import { Request, Response } from 'express'
-import models = require('../models/index')
+import config from 'config'
+import { type Request, type Response } from 'express'
+import { BasketModel } from '../models/basket'
+import { UserModel } from '../models/user'
+import challengeUtils = require('../lib/challengeUtils')
+import * as utils from '../lib/utils'
+import { challenges } from '../data/datacache'
 
 const security = require('../lib/insecurity')
 const otplib = require('otplib')
-const utils = require('../lib/utils')
-const challenges = require('../data/datacache').challenges
 
 otplib.authenticator.options = {
   // Accepts tokens as valid even when they are 30sec to old or to new
@@ -28,7 +30,10 @@ async function verify (req: Request, res: Response) {
       throw new Error('Invalid token type')
     }
 
-    const user = await models.User.findByPk(userId)
+    const user = await UserModel.findByPk(userId)
+    if (user == null) {
+      throw new Error('No such user found!')
+    }
 
     const isValid = otplib.authenticator.check(totpToken, user.totpSecret)
 
@@ -37,11 +42,12 @@ async function verify (req: Request, res: Response) {
     if (!isValid) {
       return res.status(401).send()
     }
-    utils.solveIf(challenges.twoFactorAuthUnsafeSecretStorageChallenge, () => { return user.email === 'wurstbrot@' + config.get('application.domain') })
+    challengeUtils.solveIf(challenges.twoFactorAuthUnsafeSecretStorageChallenge, () => { return user.email === 'wurstbrot@' + config.get<string>('application.domain') })
 
-    const [basket] = await models.Basket.findOrCreate({ where: { userId }, defaults: {} })
+    const [basket] = await BasketModel.findOrCreate({ where: { UserId: userId } })
 
     const token = security.authorize(plainUser)
+    // @ts-expect-error FIXME set new property for original basket
     plainUser.bid = basket.id // keep track of original basket for challenge solution check
     security.authenticatedUsers.put(token, plainUser)
 
@@ -65,7 +71,7 @@ async function status (req: Request, res: Response) {
     const { data: user } = data
 
     if (user.totpSecret === '') {
-      const secret = await otplib.authenticator.generateSecret()
+      const secret = otplib.authenticator.generateSecret()
 
       res.json({
         setup: false,
@@ -122,7 +128,11 @@ async function setup (req: Request, res: Response) {
     }
 
     // Update db model and cached object
-    const userModel = await models.User.findByPk(user.id)
+    const userModel = await UserModel.findByPk(user.id)
+    if (userModel == null) {
+      throw new Error('No such user found!')
+    }
+
     userModel.totpSecret = secret
     await userModel.save()
     security.authenticatedUsers.updateFrom(req, utils.queryResultToJson(userModel))
@@ -151,7 +161,11 @@ async function disable (req: Request, res: Response) {
     }
 
     // Update db model and cached object
-    const userModel = await models.User.findByPk(user.id)
+    const userModel = await UserModel.findByPk(user.id)
+    if (userModel == null) {
+      throw new Error('No such user found!')
+    }
+
     userModel.totpSecret = ''
     await userModel.save()
     security.authenticatedUsers.updateFrom(req, utils.queryResultToJson(userModel))

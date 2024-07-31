@@ -1,12 +1,13 @@
 /*
- * Copyright (c) 2014-2022 Bjoern Kimminich & the OWASP Juice Shop contributors.
+ * Copyright (c) 2014-2024 Bjoern Kimminich & the OWASP Juice Shop contributors.
  * SPDX-License-Identifier: MIT
  */
 
-import models = require('../models/index')
-import { Request, Response, NextFunction } from 'express'
+import { type Request, type Response, type NextFunction } from 'express'
+import { UserModel } from '../models/user'
+import challengeUtils = require('../lib/challengeUtils')
 
-const utils = require('../lib/utils')
+import * as utils from '../lib/utils'
 const security = require('../lib/insecurity')
 const cache = require('../data/datacache')
 const challenges = cache.challenges
@@ -16,21 +17,22 @@ module.exports = function saveLoginIp () {
     const loggedInUser = security.authenticatedUsers.from(req)
     if (loggedInUser !== undefined) {
       let lastLoginIp = req.headers['true-client-ip']
-      if (!utils.disableOnContainerEnv()) {
-        utils.solveIf(challenges.httpHeaderXssChallenge, () => { return lastLoginIp === '<iframe src="javascript:alert(`xss`)">' })
+      if (utils.isChallengeEnabled(challenges.httpHeaderXssChallenge)) {
+        challengeUtils.solveIf(challenges.httpHeaderXssChallenge, () => { return lastLoginIp === '<iframe src="javascript:alert(`xss`)">' })
       } else {
         lastLoginIp = security.sanitizeSecure(lastLoginIp)
       }
       if (lastLoginIp === undefined) {
-        lastLoginIp = utils.toSimpleIpAddress(req.connection.remoteAddress)
+        // @ts-expect-error FIXME types not matching
+        lastLoginIp = utils.toSimpleIpAddress(req.socket.remoteAddress)
       }
-      models.User.findByPk(loggedInUser.data.id).then(user => {
-        user.update({ lastLoginIp: lastLoginIp }).then(user => {
+      UserModel.findByPk(loggedInUser.data.id).then((user: UserModel | null) => {
+        user?.update({ lastLoginIp: lastLoginIp?.toString() }).then((user: UserModel) => {
           res.json(user)
-        }).catch(error => {
+        }).catch((error: Error) => {
           next(error)
         })
-      }).catch(error => {
+      }).catch((error: Error) => {
         next(error)
       })
     } else {

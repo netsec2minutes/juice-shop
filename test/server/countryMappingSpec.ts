@@ -1,11 +1,12 @@
 /*
- * Copyright (c) 2014-2022 Bjoern Kimminich & the OWASP Juice Shop contributors.
+ * Copyright (c) 2014-2024 Bjoern Kimminich & the OWASP Juice Shop contributors.
  * SPDX-License-Identifier: MIT
  */
 
 import sinon = require('sinon')
-const chai = require('chai')
-const sinonChai = require('sinon-chai')
+import config from 'config'
+import chai = require('chai')
+import sinonChai = require('sinon-chai')
 const expect = chai.expect
 chai.use(sinonChai)
 
@@ -31,9 +32,13 @@ describe('countryMapping', () => {
     expect(res.status).to.have.been.calledWith(500)
   })
 
-  it('should return server error for default configuration', () => {
+  it('should return ' + (config.get('ctf.countryMapping') ? 'no ' : '') + 'server error for active configuration from config/' + process.env.NODE_ENV + '.yml', () => {
     countryMapping()(req, res)
 
-    expect(res.status).to.have.been.calledWith(500)
+    if (config.get('ctf.countryMapping')) {
+      expect(res.send).to.have.been.calledWith(config.get('ctf.countryMapping'))
+    } else {
+      expect(res.status).to.have.been.calledWith(500)
+    }
   })
 })
